@@ -4,7 +4,8 @@
     {
         private static async Task Main()
         {
-            var directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "TextFiles");
+            var baseDirectory = AppContext.BaseDirectory;
+            var directoryPath = Path.Combine(baseDirectory, "..", "..", "..", "TextFiles");
             var fileProcessor = new FileProcessor();
 
             // Вариант а

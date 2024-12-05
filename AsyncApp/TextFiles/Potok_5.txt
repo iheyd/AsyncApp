@@ -1,0 +1,155 @@
+Вызов асинхронных API в C# или Visual Basic
+
+    Статья
+    06.07.2024
+
+В этой статье
+
+    Использование асинхронных API
+    Возвращаемые типы и результаты асинхронных API
+    Обработка ошибок
+    Сводка и дальнейшие действия
+
+Универсальная платформа Windows (UWP) включает множество асинхронных API, чтобы гарантировать, что ваше приложение остается адаптивным, когда оно работает, что может занять длительное время. В этом разделе описывается использование асинхронных методов из UWP в C# или Microsoft Visual Basic.
+
+Асинхронные API позволяют приложению ожидать завершения больших операций перед продолжением выполнения. Например, приложение, скачающее информацию из Интернета, может потратить несколько секунд, ожидая поступления сведений. Если вы используете синхронный метод для получения сведений, приложение блокируется до тех пор, пока метод не возвращается. Приложение не будет реагировать на взаимодействие с пользователем, так как оно кажется нереагируемым, пользователь может стать разочарованным. Предоставляя асинхронные API, UWP помогает обеспечить реагирование приложения на пользователя при выполнении длительных операций.
+
+Большинство асинхронных API в UWP не имеют синхронных аналогов, поэтому необходимо понять, как использовать асинхронные API с C# или Visual Basic в приложении универсальная платформа Windows (UWP). Здесь показано, как вызывать асинхронные API UWP.
+Использование асинхронных API
+
+По соглашению асинхронные методы присваиваются именам, заканчивающимся "Async". Обычно вы вызываете асинхронные API в ответ на действие пользователя, например когда пользователь нажимает кнопку. Вызов асинхронного метода в обработчике событий является одним из самых простых способов использования асинхронных API. Здесь мы используем оператор await в качестве примера.
+
+Предположим, что у вас есть приложение, в которое перечислены заголовки записей блога из определенного расположения. Приложение имеет кнопку, которую пользователь щелкает, чтобы получить заголовки. Заголовки отображаются в TextBlock. Когда пользователь нажимает кнопку, важно, чтобы приложение оставалось адаптивным во время ожидания информации с веб-сайта блога. Чтобы обеспечить эту скорость реагирования, UWP предоставляет асинхронный метод SyndicationClient.RetrieveFeedAsync, чтобы скачать веб-канал.
+
+В этом примере отображаются списки записей блога из блога, вызывая асинхронный метод SyndicationClient.RetrieveFeedAsync и ожидая результата.
+C#
+
+// Put the keyword async on the declaration of the event handler.
+private async void Button_Click_1(object sender, RoutedEventArgs e)
+{
+
+    Windows.Web.Syndication.SyndicationClient client = new SyndicationClient();
+
+    Uri feedUri
+        = new Uri("http://windowsteamblog.com/windows/b/windowsexperience/atom.aspx");
+
+    try
+    {
+        SyndicationFeed feed = await client.RetrieveFeedAsync(feedUri);
+
+        // The rest of this method executes after await RetrieveFeedAsync completes.
+        rssOutput.Text = feed.Title.Text + Environment.NewLine;
+
+        foreach (SyndicationItem item in feed.Items)
+        {
+            rssOutput.Text += item.Title.Text + ", " +
+                             item.PublishedDate.ToString() + Environment.NewLine;
+        }
+    }
+    catch (Exception ex)
+    {
+        // Log Error.
+        rssOutput.Text =
+            "I'm sorry, but I couldn't load the page," +
+            " possibly due to network problems." +
+            "Here's the error message I received: "
+            + ex.ToString();
+    }
+}
+
+VB
+
+' Put the keyword Async on the declaration of the event handler.
+Private Async Sub Button_Click_1(sender As Object, e As RoutedEventArgs)
+    Dim client As New Windows.Web.Syndication.SyndicationClient()
+    Dim feedUri As New Uri("http://windowsteamblog.com/windows/b/windowsexperience/atom.aspx")
+
+    Try
+        Dim feed As SyndicationFeed = Await client.RetrieveFeedAsync(feedUri)
+
+        ' The rest of this method executes after the await operation completes.
+        rssOutput.Text = feed.Title.Text & vbCrLf
+
+        For Each item In feed.Items
+            rssOutput.Text += $"{item.Title.Text}, {item.PublishedDate.ToString()}{vbCrLf}"
+        Next
+
+    Catch ex As Exception
+        ' Log Error.
+        rssOutput.Text = "I'm sorry, but I couldn't load the page," &
+                         " possibly due to network problems." &
+                         "Here's the error message I received: " &
+                          ex.ToString()
+    End Try
+
+End Sub
+
+В этом примере есть несколько важных вещей. Во-первых, SyndicationFeed feed = await client.RetrieveFeedAsync(feedUri) строка использует оператор await с вызовом асинхронного метода RetrieveFeedAsync. Оператор await можно подумать, как сообщить компилятору, что вызывается асинхронный метод, что приводит к тому, что компилятор выполняет некоторую дополнительную работу, поэтому вам не нужно. Затем объявление обработчика событий включает асинхронное ключевое слово. Необходимо включить это ключевое слово в объявление метода любого метода, в котором используется оператор await .
+
+В этом разделе мы не рассмотрим множество сведений о том, что компилятор делает с оператором await , но давайте рассмотрим, что делает ваше приложение таким образом, чтобы оно было асинхронным и адаптивным. Рассмотрим, что происходит при использовании синхронного кода. Например, предположим, что есть метод, который вызывается SyndicationClient.RetrieveFeed синхронно. (Такой метод отсутствует, но представьте, что есть.) Если приложение включало строку SyndicationFeed feed = client.RetrieveFeed(feedUri)вместо SyndicationFeed feed = await client.RetrieveFeedAsync(feedUri)того, чтобы завершить выполнение приложения до тех пор, пока возвращаемое значение RetrieveFeed не будет доступно. И пока приложение ожидает завершения метода, оно не может реагировать на другие события, например другое событие Click . То есть приложение будет заблокировано, пока RetrieveFeed не вернется.
+
+Но при вызове client.RetrieveFeedAsyncметод инициирует извлечение и немедленно возвращается. При использовании await с RetrieveFeedAsync приложение временно выходит из обработчика событий. Затем он может обрабатывать другие события во время асинхронного выполнения RetrieveFeedAsync . Это позволяет приложению реагировать на пользователя. Когда функция RetrieveFeedAsync завершит работу, а SyndicationFeed доступна, приложение по сути повторно отправляет обработчик событий, в котором он остался, после SyndicationFeed feed = await client.RetrieveFeedAsync(feedUri)и завершает остальную часть метода.
+
+Приятно использовать оператор await заключается в том, что код не выглядит намного отличается от того, как код выглядит, если вы использовали мнимый RetrieveFeed метод. Существует способ написания асинхронного кода в C# или Visual Basic без оператора await , но результирующий код, как правило, подчеркивает механику асинхронного выполнения. Это делает асинхронный код сложным для записи, трудно понять и трудно поддерживать. Используя оператор await , вы получаете преимущества асинхронного приложения, не делая код сложным.
+Возвращаемые типы и результаты асинхронных API
+
+Если вы выполнили ссылку на RetrieveFeedAsync, возможно, вы заметили, что возвращаемый тип RetrieveFeedAsync не является SyndicationFeedFeed. Вместо этого возвращается IAsyncOperationWithProgress<SyndicationFeed, RetrievalProgress>тип. Просматриваемый из необработанного синтаксиса, асинхронный API возвращает объект, содержащий результат внутри него. Хотя это часто и иногда полезно, чтобы рассматривать асинхронный метод как ожидающий, оператор await фактически работает с возвращаемым значением метода, а не на методе. При применении оператора await возвращается результат вызова GetResult для объекта, возвращаемого методом. В примере SyndicationFeed является результатом GetFeedAsync.GetResult().
+
+При использовании асинхронного метода можно проверить сигнатуру, чтобы увидеть, что вы вернетесь после ожидания значения, возвращаемого из метода. Все асинхронные API в UWP возвращают один из следующих типов:
+
+    IAsyncOperation<TResult>
+    IAsyncOperationWithProgress<TResult, TProgress>
+    IAsyncAction
+    IAsyncActionWithProgress<TProgress>
+
+Тип результата асинхронного метода совпадает с параметром TResult типа. Типы без TResult результата. Вы можете представить результат как пустоту. В Visual Basic процедура Sub эквивалентна методу с типом возвращаемого значения void .
+
+В таблице приведены примеры асинхронных методов и перечислены тип возвращаемого и результирующий тип каждого.
+Асинхронный метод 	Возвращаемый тип 	Тип результата
+SyndicationClient.RetrieveFeedAsync 	IAsyncOperationWithProgresss<SyndicationFeed, RetrievalProgress> 	SyndicationFeed
+FileOpenPicker.PickSingleFileAsync 	IAsyncOperation<StorageFile> 	StorageFile
+XmlDocument.SaveToFileAsync 	IAsyncAction 	void
+InkStrokeContainer.LoadAsync 	IAsyncActionWithProgress<UInt64> 	void
+DataReader.LoadAsync 	DataReaderLoadOperation— пользовательский класс результатов, реализующий IAsyncOperation<UInt32> 	UInt32
+
+ 
+
+Асинхронные методы, определенные в .NET для приложений UWP, имеют возвращаемый тип Task или Task<TResult>. Методы, возвращающие задачу, похожи на асинхронные методы в UWP, возвращающие IAsyncAction. В каждом случае результат асинхронного метода является void. Возвращаемый тип Task<TResult аналогичен IAsyncOperation<TResult>>, что результат асинхронного метода при выполнении задачи совпадает с TResult типом параметра типа. Дополнительные сведения об использовании .NET для приложений и задач UWP см. в статье .NET для среда выполнения Windows приложений.
+Обработка ошибок
+
+При использовании оператора await для получения результатов из асинхронного метода можно использовать блок try/catch для обработки ошибок, возникающих в асинхронных методах, так же, как и для синхронных методов. В предыдущем примере выполняется оболочка метода RetrieveFeedAsync и операция await в блоке try/catch для обработки ошибок при возникновении исключения.
+
+Когда асинхронные методы вызывают другие асинхронные методы, любые асинхронные методы, которые приводят к исключению, будут распространяться на внешние методы. Это означает, что можно поместить блок try/catch во внешний метод для перехвата ошибок для вложенных асинхронных методов. Опять же, это похоже на то, как вы перехватываете исключения для синхронных методов. Однако вы не можете использовать ожидание в блоке catch .
+
+Совет начиная с C# в Microsoft Visual Studio 2005, можно использовать ожидание в блоке catch .
+Сводка и дальнейшие действия
+
+Шаблон вызова асинхронного метода, который мы показываем здесь, является самым простым для использования при вызове асинхронных API в обработчике событий. Этот шаблон также можно использовать при вызове асинхронного метода в переопределенном методе, который возвращает void или sub в Visual Basic.
+
+При возникновении асинхронных методов в UWP важно помнить:
+
+    По соглашению асинхронные методы присваиваются именам, заканчивающимся "Async".
+    Любой метод, использующий оператор await, должен иметь объявление с асинхронным ключевым словом.
+    Когда приложение находит оператор await , приложение остается адаптивным к взаимодействию с пользователем во время выполнения асинхронного метода.
+    Ожидание значения, возвращаемого асинхронным методом, возвращает объект, содержащий результат. В большинстве случаев результат, содержащийся в возвращаемом значении, является полезным, а не самим возвращаемым значением. Тип значения, содержащегося внутри результата, можно найти, просмотрев тип возвращаемого типа асинхронного метода.
+    Использование асинхронных API и асинхронных шаблонов часто позволяет повысить скорость реагирования приложения.
+
+В примере в этом разделе выводится текст, который выглядит следующим образом.
+syntax
+
+Windows Experience Blog
+PC Snapshot: Sony VAIO Y, 8/9/2011 10:26:56 AM -07:00
+Tech Tuesday Live Twitter #Chat: Too Much Tech #win7tech, 8/8/2011 12:48:26 PM -07:00
+Windows 7 themes: what’s new and what’s popular!, 8/4/2011 11:56:28 AM -07:00
+PC Snapshot: Toshiba Satellite A665 3D, 8/2/2011 8:59:15 AM -07:00
+Time for new school supplies? Find back-to-school deals on Windows 7 PCs and Office 2010, 8/1/2011 2:14:40 PM -07:00
+Best PCs for blogging (or working) on the go, 8/1/2011 10:08:14 AM -07:00
+Tech Tuesday – Blogging Tips and Tricks–#win7tech, 8/1/2011 9:35:54 AM -07:00
+PC Snapshot: Lenovo IdeaPad U460, 7/29/2011 9:23:05 AM -07:00
+GIVEAWAY: Survive BlogHer with a Sony VAIO SA and a Samsung Focus, 7/28/2011 7:27:14 AM -07:00
+3 Ways to Stay Cool This Summer, 7/26/2011 4:58:23 PM -07:00
+Getting RAW support in Photo Gallery & Windows 7 (…and a contest!), 7/26/2011 10:40:51 AM -07:00
+Tech Tuesdays Live Twitter Chats: Photography Tips, Tricks and Essentials, 7/25/2011 12:33:06 PM -07:00
+3 Tips to Go Green With Your PC, 7/22/2011 9:19:43 AM -07:00
+How to: Buy a Green PC, 7/22/2011 9:13:22 AM -07:00
+Windows 7 themes: the distinctive artwork of Cheng Ling, 7/20/2011 9:53:07 AM -07:00

@@ -1,0 +1,217 @@
+Отправка рабочего элемента с помощью таймера
+
+    Статья
+    06.07.2024
+
+В этой статье
+
+    Создание одноразового таймера
+    Предоставление обработчика завершения
+    Отмена таймера
+    Замечания
+    См. также
+
+Важные API
+
+    Пространство имен Windows.UI.Core
+    Пространство имен Windows.System.Threading
+
+Узнайте, как создать рабочий элемент, который выполняется после истечения таймера.
+Создание одноразового таймера
+
+Используйте метод CreateTimer для создания таймера для рабочего элемента. Укажите лямбда-файл, который выполняет работу, и используйте параметр задержки , чтобы указать время ожидания пула потоков, прежде чем он сможет назначить рабочий элемент доступному потоку. Задержка задается с помощью структуры TimeSpan.
+
+    Примечание. Вы можете использовать CoreDispatcher.RunAsync для доступа к пользовательскому интерфейсу и отображения хода выполнения из рабочего элемента.
+
+В следующем примере создается рабочий элемент, который выполняется в три минуты:
+C#
+
+TimeSpan delay = TimeSpan.FromMinutes(3);
+            
+ThreadPoolTimer DelayTimer = ThreadPoolTimer.CreateTimer(
+    (source) =>
+    {
+        //
+        // TODO: Work
+        //
+        
+        //
+        // Update the UI thread by using the UI core dispatcher.
+        //
+        Dispatcher.RunAsync(
+            CoreDispatcherPriority.High,
+            () =>
+            {
+                //
+                // UI components can be accessed within this scope.
+                //
+
+            });
+
+    }, delay);
+
+C++
+
+TimeSpan delay;
+delay.Duration = 3 * 60 * 10000000; // 10,000,000 ticks per second
+
+ThreadPoolTimer ^ DelayTimer = ThreadPoolTimer::CreateTimer(
+        ref new TimerElapsedHandler([this](ThreadPoolTimer^ source)
+        {
+            //
+            // TODO: Work
+            //
+            
+            //
+            // Update the UI thread by using the UI core dispatcher.
+            //
+            Dispatcher->RunAsync(CoreDispatcherPriority::High,
+                ref new DispatchedHandler([this]()
+                {
+                    //
+                    // UI components can be accessed within this scope.
+                    //
+
+                    ExampleUIUpdateMethod("Timer completed.");
+
+                }));
+
+        }), delay);
+
+Предоставление обработчика завершения
+
+При необходимости обработайте отмену и завершение рабочего элемента с помощью TimerDebiedHandler. Используйте перегрузку CreateTimer для предоставления дополнительного лямбда-кода. Это выполняется при отмене таймера или после завершения рабочего элемента.
+
+В следующем примере создается таймер, который отправляет рабочий элемент и вызывает метод после завершения работы рабочего элемента или таймера.
+C#
+
+TimeSpan delay = TimeSpan.FromMinutes(3);
+            
+bool completed = false;
+
+ThreadPoolTimer DelayTimer = ThreadPoolTimer.CreateTimer(
+    (source) =>
+    {
+        //
+        // TODO: Work
+        //
+
+        //
+        // Update the UI thread by using the UI core dispatcher.
+        //
+        Dispatcher.RunAsync(
+                CoreDispatcherPriority.High,
+                () =>
+                {
+                    //
+                    // UI components can be accessed within this scope.
+                    //
+
+                });
+
+        completed = true;
+    },
+    delay,
+    (source) =>
+    {
+        //
+        // TODO: Handle work cancellation/completion.
+        //
+
+
+        //
+        // Update the UI thread by using the UI core dispatcher.
+        //
+        Dispatcher.RunAsync(
+            CoreDispatcherPriority.High,
+            () =>
+            {
+                //
+                // UI components can be accessed within this scope.
+                //
+
+                if (completed)
+                {
+                    // Timer completed.
+                }
+                else
+                {
+                    // Timer cancelled.
+                }
+
+            });
+    });
+
+C++
+
+TimeSpan delay;
+delay.Duration = 3 * 60 * 10000000; // 10,000,000 ticks per second
+
+completed = false;
+
+ThreadPoolTimer ^ DelayTimer = ThreadPoolTimer::CreateTimer(
+        ref new TimerElapsedHandler([&](ThreadPoolTimer ^ source)
+        {
+            //
+            // TODO: Work
+            //
+
+            //
+            // Update the UI thread by using the UI core dispatcher.
+            //
+            Dispatcher->RunAsync(CoreDispatcherPriority::High,
+                ref new DispatchedHandler([&]()
+                {
+                    //
+                    // UI components can be accessed within this scope.
+                    //
+
+                }));
+
+            completed = true;
+
+        }),
+        delay,
+        ref new TimerDestroyedHandler([&](ThreadPoolTimer ^ source)
+        {
+            //
+            // TODO: Handle work cancellation/completion.
+            //
+
+            Dispatcher->RunAsync(CoreDispatcherPriority::High,
+                ref new DispatchedHandler([&]()
+                {
+                    //
+                    // Update the UI thread by using the UI core dispatcher.
+                    //
+
+                    if (completed)
+                    {
+                        // Timer completed.
+                    }
+                    else
+                    {
+                        // Timer cancelled.
+                    }
+
+                }));
+        }));
+
+Отмена таймера
+
+Если таймер по-прежнему подсчитывается, но рабочий элемент больше не нужен, вызовите отмену. Таймер отменен, и рабочий элемент не будет отправлен в пул потоков.
+C#
+
+DelayTimer.Cancel();
+
+C++
+
+DelayTimer->Cancel();
+
+Замечания
+
+приложения универсальная платформа Windows (UWP) не могут использовать Thread.Sleep, так как он может блокировать поток пользовательского интерфейса. Вместо этого можно использовать ThreadPoolTimer для создания рабочего элемента, и это приведет к задержке задачи, выполняемой рабочим элементом, без блокировки потока пользовательского интерфейса.
+
+См. пример пула потоков для полного примера кода, демонстрирующего рабочие элементы, рабочие элементы таймера и периодические рабочие элементы. Пример кода изначально был написан для Windows 8.1, но код можно повторно использовать в Windows 10.
+
+Сведения о повторяющихся таймерах см. в разделе "Создание периодического рабочего элемента".

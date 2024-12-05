@@ -1,0 +1,153 @@
+Использование объектов среды выполнения Windows в многопоточной среде
+
+    Статья
+    06.07.2024
+
+В этой статье
+
+    Объекты из компонента среда выполнения Windows, написанного на C# или Visual Basic
+    Объекты из среда выполнения Windows
+    Объекты из компонента среда выполнения Windows, написанного на C++
+    См. также
+
+В этой статье описывается, как платформа .NET Framework обрабатывает вызовы кода C# и Visual Basic к объектам, предоставляемым среда выполнения Windows или компонентами среда выполнения Windows.
+
+В платформа .NET Framework доступ к любому объекту из нескольких потоков можно получить по умолчанию без специальной обработки. Все, что вам нужно, — это ссылка на объект. В среда выполнения Windows такие объекты называются гибкими. Большинство среда выполнения Windows классов являются гибкими, но некоторые классы не являются, и даже гибкие классы могут потребовать специальной обработки.
+
+По возможности среда CLR обрабатывает объекты из других источников, например среда выполнения Windows, как если бы они были платформа .NET Framework объектами:
+
+    Если объект реализует интерфейс IAgileObject или имеет атрибут MarshalingBehaviorAttribute с marshalingType.Agile, среда CLR обрабатывает его как гибкий.
+
+    Если среда CLR может маршалировать вызов из потока, в котором он был сделан в контекст потоков целевого объекта, он делает это прозрачно.
+
+    Если объект имеет атрибут MarshalingBehaviorAttribute с MarshalingType.None, класс не предоставляет сведения о маршалинге. ClR не может маршалировать вызов, поэтому он создает исключение InvalidCastException с сообщением, указывающим, что объект может использоваться только в контексте потоков, где он был создан.
+
+В следующих разделах описываются последствия этого поведения для объектов из различных источников.
+Объекты из компонента среда выполнения Windows, написанного на C# или Visual Basic
+
+Все типы компонентов, которые можно активировать, по умолчанию являются гибкими.
+
+Примечание
+
+Гибкость не подразумевает безопасность потоков. В среда выполнения Windows и платформа .NET Framework большинство классов не являются потокобезопасны, так как безопасность потоков имеет затраты на производительность, и большинство объектов никогда не обращаются к нескольким потокам. Более эффективно синхронизировать доступ к отдельным объектам (или использовать потокобезопасные классы) только по мере необходимости.
+
+При создании компонента среда выполнения Windows можно переопределить значение по умолчанию. Просмотрите интерфейс ICustomQueryInterface и интерфейс IAgileObject .
+Объекты из среда выполнения Windows
+
+Большинство классов в среда выполнения Windows являются гибкими, и СРЕДА CLR обрабатывает их как гибкие. В документации по этим классам перечислены атрибуты класса MarshalingBehaviorAttribute(Agile). Однако члены некоторых из этих гибких классов, таких как элементы управления XAML, вызывают исключения, если они не вызываются в потоке пользовательского интерфейса. Например, следующий код пытается использовать фоновый поток для задания свойства кнопки, которая была нажата. Свойство Content кнопки вызывает исключение.
+C#
+
+private async void Button_Click_2(object sender, RoutedEventArgs e)
+{
+    Button b = (Button) sender;
+    await Task.Run(() => {
+        b.Content += ".";
+    });
+}
+
+VB
+
+Private Async Sub Button_Click_2(sender As Object, e As RoutedEventArgs)
+    Dim b As Button = CType(sender, Button)
+    Await Task.Run(Sub()
+                       b.Content &= "."
+                   End Sub)
+End Sub
+
+Вы можете безопасно получить доступ к кнопке с помощью свойства диспетчера или Dispatcher свойства любого объекта, существующего в контексте потока пользовательского интерфейса (например, страницы, на которую включена кнопка). Следующий код использует метод RunAsync объекта CoreDispatcher для отправки вызова в потоке пользовательского интерфейса.
+C#
+
+private async void Button_Click_2(object sender, RoutedEventArgs e)
+{
+    Button b = (Button) sender;
+    await b.Dispatcher.RunAsync(
+        Windows.UI.Core.CoreDispatcherPriority.Normal,
+        () => {
+            b.Content += ".";
+    });
+}
+
+VB
+
+Private Async Sub Button_Click_2(sender As Object, e As RoutedEventArgs)
+    Dim b As Button = CType(sender, Button)
+    Await b.Dispatcher.RunAsync(
+        Windows.UI.Core.CoreDispatcherPriority.Normal,
+        Sub()
+            b.Content &= "."
+        End Sub)
+End Sub
+
+Примечание
+
+Свойство Dispatcher не создает исключение при вызове из другого потока.
+
+Время существования объекта среда выполнения Windows, созданного в потоке пользовательского интерфейса, ограничивается временем существования потока. Не пытайтесь получить доступ к объектам в потоке пользовательского интерфейса после закрытия окна.
+
+Если вы создаете собственный элемент управления, наследуя элемент управления XAML или создавая набор элементов управления XAML, ваш элемент управления является гибким, так как это объект платформа .NET Framework. Однако если он вызывает члены своего базового класса или составных классов, или при вызове наследуемых элементов эти элементы будут вызывать исключения при вызове из любого потока, кроме потока пользовательского интерфейса.
+Классы, которые нельзя маршалировать
+
+среда выполнения Windows классы, не предоставляющие информацию о маршале, имеют Атрибут MarshalingBehaviorAttribute с marshalingType.None. В документации по такому классу перечислены "MarshalingBehaviorAttribute(None)" среди его атрибутов.
+
+Следующий код создает объект CameraCaptureUI в потоке пользовательского интерфейса, а затем пытается задать свойство объекта из потока пула потоков. Среда CLR не может маршалировать вызов и создает исключение System.InvalidCastException с сообщением о том, что объект можно использовать только в контексте потоков, в котором он был создан.
+C#
+
+Windows.Media.Capture.CameraCaptureUI ccui;
+
+private async void Button_Click_1(object sender, RoutedEventArgs e)
+{
+    ccui = new Windows.Media.Capture.CameraCaptureUI();
+
+    await Task.Run(() => {
+        ccui.PhotoSettings.AllowCropping = true;
+    });
+}
+
+VB
+
+Private ccui As Windows.Media.Capture.CameraCaptureUI
+
+Private Async Sub Button_Click_1(sender As Object, e As RoutedEventArgs)
+    ccui = New Windows.Media.Capture.CameraCaptureUI()
+
+    Await Task.Run(Sub()
+                       ccui.PhotoSettings.AllowCropping = True
+                   End Sub)
+End Sub
+
+В документации по CameraCaptureUI также перечислены атрибуты ThreadingAttribute(STA) класса, так как он должен быть создан в однопоточном контексте, например в потоке пользовательского интерфейса.
+
+Если вы хотите получить доступ к объекту CameraCaptureUI из другого потока, можно кэшировать объект CoreDispatcher для потока пользовательского интерфейса и использовать его позже для отправки вызова в этом потоке. Или вы можете получить диспетчер из объекта XAML, например страницы, как показано в следующем коде.
+C#
+
+Windows.Media.Capture.CameraCaptureUI ccui;
+
+private async void Button_Click_3(object sender, RoutedEventArgs e)
+{
+    ccui = new Windows.Media.Capture.CameraCaptureUI();
+
+    await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal,
+        () => {
+            ccui.PhotoSettings.AllowCropping = true;
+        });
+}
+
+VB
+
+Dim ccui As Windows.Media.Capture.CameraCaptureUI
+
+Private Async Sub Button_Click_3(sender As Object, e As RoutedEventArgs)
+
+    ccui = New Windows.Media.Capture.CameraCaptureUI()
+
+    Await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal,
+                                Sub()
+                                    ccui.PhotoSettings.AllowCropping = True
+                                End Sub)
+End Sub
+
+Объекты из компонента среда выполнения Windows, написанного на C++
+
+По умолчанию классы в компоненте, который можно активировать, являются гибкими. Однако C++ позволяет значительно контролировать модели потоков и поведение маршалинга. Как описано ранее в этой статье, среда CLR распознает гибкие классы, пытается маршалировать вызовы, когда классы не гибки, и создает исключение System.InvalidCastException , если класс не имеет сведений о маршалинге.
+
+Для объектов, которые выполняются в потоке пользовательского интерфейса и вызывают исключения при вызове из потока, отличного от потока пользовательского интерфейса, можно использовать объект CoreDispatcher потока пользовательского интерфейса для отправки вызова.

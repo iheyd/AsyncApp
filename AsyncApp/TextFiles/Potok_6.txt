@@ -1,0 +1,192 @@
+Создание периодического рабочего элемента
+
+    Статья
+    06.07.2024
+
+В этой статье
+
+    Создание периодического рабочего элемента
+    Обработка отмены периодического рабочего элемента (необязательно)
+    Отмена таймера
+    Замечания
+    См. также
+
+Важные API
+
+    CreatePeriodicTimer
+    ThreadPoolTimer
+
+Узнайте, как создать рабочий элемент, повторяющийся периодически.
+Создание периодического рабочего элемента
+
+Используйте метод CreatePeriodicTimer для создания периодического рабочего элемента. Укажите лямбда-файл, который выполняет работу, и используйте параметр периода , чтобы указать интервал между отправками. Этот период задается с помощью структуры TimeSpan. Рабочий элемент будет повторно отправляться каждый раз, когда истекает период, поэтому убедитесь, что период достаточно длинный для завершения работы.
+
+CreateTimer возвращает объект ThreadPoolTimer . Сохраните этот объект в случае отмены таймера.
+
+    Обратите внимание , что не следует указывать значение нуля (или любое значение меньше одного миллисекунда) для интервала. Это приводит к тому, что периодический таймер будет вести себя как однокамерный таймер.
+
+    Примечание. Вы можете использовать CoreDispatcher.RunAsync для доступа к пользовательскому интерфейсу и отображения хода выполнения из рабочего элемента.
+
+В следующем примере создается рабочий элемент, который выполняется каждые 60 секунд:
+C#
+
+TimeSpan period = TimeSpan.FromSeconds(60);
+
+ThreadPoolTimer PeriodicTimer = ThreadPoolTimer.CreatePeriodicTimer((source) =>
+    {
+        //
+        // TODO: Work
+        //
+        
+        //
+        // Update the UI thread by using the UI core dispatcher.
+        //
+        Dispatcher.RunAsync(CoreDispatcherPriority.High,
+            () =>
+            {
+                //
+                // UI components can be accessed within this scope.
+                //
+
+            });
+
+    }, period);
+
+C++
+
+TimeSpan period;
+period.Duration = 60 * 10000000; // 10,000,000 ticks per second
+
+ThreadPoolTimer ^ PeriodicTimer = ThreadPoolTimer::CreatePeriodicTimer(
+        ref new TimerElapsedHandler([this](ThreadPoolTimer^ source)
+        {
+            //
+            // TODO: Work
+            //
+            
+            //
+            // Update the UI thread by using the UI core dispatcher.
+            //
+            Dispatcher->RunAsync(CoreDispatcherPriority::High,
+                ref new DispatchedHandler([this]()
+                {
+                    //
+                    // UI components can be accessed within this scope.
+                    //
+                        
+                }));
+
+        }), period);
+
+Обработка отмены периодического рабочего элемента (необязательно)
+
+При необходимости можно обработать отмену периодического таймера с помощью TimerDebiedHandler. Используйте перегрузку CreatePeriodicTimer для предоставления дополнительной лямбда-функции, которая обрабатывает отмену периодического рабочего элемента.
+
+В следующем примере создается периодический рабочий элемент, повторяющийся каждые 60 секунд, и он также предоставляет обработчик отмены:
+C#
+
+using Windows.System.Threading;
+
+    TimeSpan period = TimeSpan.FromSeconds(60);
+
+    ThreadPoolTimer PeriodicTimer = ThreadPoolTimer.CreatePeriodicTimer((source) =>
+    {
+        //
+        // TODO: Work
+        //
+        
+        //
+        // Update the UI thread by using the UI core dispatcher.
+        //
+        Dispatcher.RunAsync(CoreDispatcherPriority.High,
+            () =>
+            {
+                //
+                // UI components can be accessed within this scope.
+                //
+
+            });
+    },
+    period,
+    (source) =>
+    {
+        //
+        // TODO: Handle periodic timer cancellation.
+        //
+
+        //
+        // Update the UI thread by using the UI core dispatcher.
+        //
+        Dispatcher->RunAsync(CoreDispatcherPriority.High,
+            ()=>
+            {
+                //
+                // UI components can be accessed within this scope.
+                //                 
+
+                // Periodic timer cancelled.
+
+            }));
+    });
+
+C++
+
+using namespace Windows::System::Threading;
+using namespace Windows::UI::Core;
+
+TimeSpan period;
+period.Duration = 60 * 10000000; // 10,000,000 ticks per second
+
+ThreadPoolTimer ^ PeriodicTimer = ThreadPoolTimer::CreatePeriodicTimer(
+        ref new TimerElapsedHandler([this](ThreadPoolTimer^ source)
+        {
+            //
+            // TODO: Work
+            //
+                
+            //
+            // Update the UI thread by using the UI core dispatcher.
+            //
+            Dispatcher->RunAsync(CoreDispatcherPriority::High,
+                ref new DispatchedHandler([this]()
+                {
+                    //
+                    // UI components can be accessed within this scope.
+                    //
+
+                }));
+
+        }),
+        period,
+        ref new TimerDestroyedHandler([&](ThreadPoolTimer ^ source)
+        {
+            //
+            // TODO: Handle periodic timer cancellation.
+            //
+
+            Dispatcher->RunAsync(CoreDispatcherPriority::High,
+                ref new DispatchedHandler([&]()
+                {
+                    //
+                    // UI components can be accessed within this scope.
+                    //
+
+                    // Periodic timer cancelled.
+
+                }));
+        }));
+
+Отмена таймера
+
+При необходимости вызовите метод Cancel , чтобы остановить периодический рабочий элемент повторения. Если рабочий элемент выполняется при отмене периодического таймера, его можно завершить. ТаймерDebiedHandler (если указан) вызывается при завершении всех экземпляров периодического рабочего элемента.
+C#
+
+PeriodicTimer.Cancel();
+
+C++
+
+PeriodicTimer->Cancel();
+
+Замечания
+
+Сведения об однопользовательских таймерах см. в разделе "Использование таймера для отправки рабочего элемента".
