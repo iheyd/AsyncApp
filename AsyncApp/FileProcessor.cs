@@ -25,12 +25,12 @@ namespace AsyncApp
             await ProcessFilesAsync(directoryPath, ReadFileAndCountSpaces);
         }
 
-        public static async Task<int> ReadFileLineByLine(string filePath)
+        public static async Task<int> ReadFileByLine(string filePath)
         {
             int spaceCount = 0;
             using (var reader = new StreamReader(filePath))
             {
-                string? line;
+                string line;
                 while ((line = await reader.ReadLineAsync()) != null)
                 {
                     spaceCount += SpaceCounter.CountSpaces(line);
