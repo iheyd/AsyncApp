@@ -25,7 +25,7 @@
             // Вариант в
             Console.WriteLine("\nВариант в:");
             var startTimeC = DateTime.Now;
-            await fileProcessor.ProcessFilesAsync(directoryPath, FileProcessor.ReadFileLineByLineAndCountSpaces);
+            await fileProcessor.ProcessFilesAsync(directoryPath, FileProcessor.ReadFileLineByLine);
             var endTimeC = DateTime.Now;
             Console.WriteLine($"Время выполнения: {endTimeC - startTimeC}");
         }

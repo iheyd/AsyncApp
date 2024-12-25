@@ -25,7 +25,7 @@ namespace AsyncApp
             await ProcessFilesAsync(directoryPath, ReadFileAndCountSpaces);
         }
 
-        public static async Task<int> ReadFileLineByLineAndCountSpaces(string filePath)
+        public static async Task<int> ReadFileLineByLine(string filePath)
         {
             int spaceCount = 0;
             using (var reader = new StreamReader(filePath))
